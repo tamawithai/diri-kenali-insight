@@ -18,7 +18,17 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				'nunito': ['Nunito', 'sans-serif'],
+			},
 			colors: {
+				'primary-hover': 'hsl(var(--primary-hover))',
+				'progress-bg': 'hsl(var(--progress-bg))',
+				'progress-fill': 'hsl(var(--progress-fill))',
+				'disc-d': 'hsl(var(--disc-d))',
+				'disc-i': 'hsl(var(--disc-i))',
+				'disc-s': 'hsl(var(--disc-s))',
+				'disc-c': 'hsl(var(--disc-c))',
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
