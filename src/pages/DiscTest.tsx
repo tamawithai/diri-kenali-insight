@@ -1,14 +1,26 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react"; // Tambahkan useEffect
+import Confetti from "react-confetti"; // Impor Confetti
 import {
   Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Tooltip,
+  Legend,
+  RadialLinearScale,
+  Filler,
+} from "chart.js";
+import { Radar } from "react-chartjs-2";
+
+ChartJS.register(
   RadialLinearScale,
   PointElement,
   LineElement,
   Filler,
   Tooltip,
-  Legend,
-} from "chart.js";
-import { Radar } from "react-chartjs-2";
+  Legend
+);
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -157,7 +169,28 @@ const DiscTest: React.FC = () => {
   const [selectedMost, setSelectedMost] = useState<DiscType | null>(null);
   const [selectedLeast, setSelectedLeast] = useState<DiscType | null>(null);
   const [primaryType, setPrimaryType] = useState<DiscType>("D");
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [dimensions, setDimensions] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
   const { toast } = useToast();
+
+  // useEffect untuk mendapatkan ukuran window saat komponen dimuat
+  useEffect(() => {
+    setDimensions({
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
+    const handleResize = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const calculatePrimaryType = (finalScores: Scores): DiscType => {
     const entries = Object.entries(finalScores) as [DiscType, number][];
@@ -187,9 +220,13 @@ const DiscTest: React.FC = () => {
         setSelectedMost(null);
         setSelectedLeast(null);
       } else {
-        const finalPrimaryType = calculatePrimaryType(newScores);
-        setPrimaryType(finalPrimaryType);
-        setCurrentSection("results");
+        setScores(newScores);
+        setIsCompleting(true);
+        setTimeout(() => {
+          const finalPrimaryType = calculatePrimaryType(newScores);
+          setPrimaryType(finalPrimaryType);
+          setCurrentSection("results");
+        }, 3000); // Confetti tampil selama 3 detik sebelum pindah ke hasil
       }
     }
   };
@@ -214,7 +251,7 @@ const DiscTest: React.FC = () => {
   const canProceed =
     selectedMost && selectedLeast && selectedMost !== selectedLeast;
 
-  const chartData = {
+  const data = {
     labels: [
       "Dominance (D)",
       "Influence (I)",
@@ -223,31 +260,47 @@ const DiscTest: React.FC = () => {
     ],
     datasets: [
       {
-        label: "Skor DISC Anda",
+        label: "Skor Anda",
         data: [scores.D + 12, scores.I + 12, scores.S + 12, scores.C + 12],
-        backgroundColor: "rgba(224, 122, 95, 0.2)",
-        borderColor: "rgba(224, 122, 95, 1)",
+        borderColor: "hsl(var(--foreground))",
+        backgroundColor: "transparent", // Warna background diubah menjadi transparan
         borderWidth: 2,
-        pointBackgroundColor: "rgba(224, 122, 95, 1)",
+        pointBackgroundColor: "hsl(var(--foreground))",
+        pointRadius: 4,
       },
     ],
   };
 
-  const chartOptions = {
+  const options = {
     responsive: true,
+    maintainAspectRatio: false,
     scales: {
       r: {
+        angleLines: { color: "hsl(var(--border))" },
         beginAtZero: true,
         max: 24,
         ticks: {
-          stepSize: 4,
+          stepSize: 3,
+          display: false, // Sembunyikan angka di skala untuk desain yang lebih bersih
+        },
+        grid: { color: "hsl(var(--border))" },
+        pointLabels: {
+          font: { size: 14, family: "'Nunito', sans-serif", weight: "bold" },
+          color: "hsl(var(--foreground))",
+          padding: 70, // <-- Tambahkan baris ini
         },
       },
     },
     plugins: {
-      legend: {
-        display: false,
+      legend: { display: false },
       },
+    layout: { // <-- TAMBAHKAN BLOK INI
+        padding: {
+            top: 20,
+            bottom: 20,
+            left: 20,
+            right: 20
+        }
     },
   };
 
@@ -336,8 +389,30 @@ const DiscTest: React.FC = () => {
 
   if (currentSection === "test") {
     const currentQuestion = questions[currentQuestionIndex];
-    const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+    const progress = (currentQuestionIndex / questions.length) * 100;
 
+    // Tampilan saat confetti aktif
+    if (isCompleting) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
+          <Confetti
+            width={dimensions.width}
+            height={dimensions.height}
+            recycle={false}
+            numberOfPieces={500}
+            gravity={0.2}
+          />
+          <h2 className="text-foreground mb-4 text-2xl font-bold">
+            Menghitung Hasil Anda...
+          </h2>
+          <div className="w-full max-w-md">
+            <Progress value={100} className="progress-bar h-4" />
+          </div>
+        </div>
+      );
+    }
+
+    // Tampilan tes utama
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="max-w-3xl mx-auto w-full">
@@ -362,10 +437,10 @@ const DiscTest: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <table className="question-table">
+                <table className="w-full text-left">
                   <thead>
                     <tr className="border-b-2 border-border">
-                      <th className="text-left p-4 font-bold">Kata Sifat</th>
+                      <th className="p-4 font-bold">Kata Sifat</th>
                       <th className="text-center p-4 font-bold">
                         Paling Sesuai
                       </th>
@@ -409,7 +484,6 @@ const DiscTest: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-
               <div className="text-center mt-8">
                 <Button
                   onClick={nextQuestion}
@@ -451,28 +525,28 @@ const DiscTest: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 mb-12">
+          <div className="space-y-8 mb-12">
             <Card className="disc-card">
               <CardHeader>
-                <CardTitle>Grafik DISC Anda</CardTitle>
+                <CardTitle className="text-center">Grafik DISC Anda</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="w-full h-80">
-                  <Radar data={chartData} options={chartOptions} />
+                <div className="w-full h-[500px] sm:h-[600px] p-4">
+                  <Radar data={data} options={options} />
                 </div>
               </CardContent>
             </Card>
 
             <Card className="disc-card">
               <CardHeader>
-                <CardTitle>Ringkasan Skor</CardTitle>
+                <CardTitle className="text-center">Ringkasan Skor</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-4 max-w-sm mx-auto">
                   {Object.entries(scores).map(([type, score]) => (
                     <div
                       key={type}
-                      className="flex justify-between items-center"
+                      className="flex justify-between items-center text-lg"
                     >
                       <span className="font-medium">
                         {type} -{" "}
@@ -513,7 +587,7 @@ const DiscTest: React.FC = () => {
                     Kekuatan Utama
                   </AccordionTrigger>
                   <AccordionContent>
-                    <ul className="space-y-2 text-muted-foreground">
+                    <ul className="space-y-2 text-muted-foreground text-lg">
                       {content.strengths.map((strength, index) => (
                         <li key={index} className="flex items-start">
                           <span className="w-2 h-2 bg-secondary rounded-full mr-3 mt-2 flex-shrink-0"></span>
@@ -529,7 +603,7 @@ const DiscTest: React.FC = () => {
                     Area Pengembangan
                   </AccordionTrigger>
                   <AccordionContent>
-                    <ul className="space-y-2 text-muted-foreground">
+                    <ul className="space-y-2 text-muted-foreground text-lg">
                       {content.development.map((area, index) => (
                         <li key={index} className="flex items-start">
                           <span className="w-2 h-2 bg-primary rounded-full mr-3 mt-2 flex-shrink-0"></span>
